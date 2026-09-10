@@ -44,13 +44,13 @@ Set the console region selector (top right) to the region you want to measure fr
 
 ```bash
 git clone --depth 1 https://github.com/mibbrahim/solana-rpc-latency.git ~/rpc && cd ~/rpc
-read -rsp "endpoint API key: " KEY && echo
-export RPC_BENCH_ENDPOINTS="helius=https://mainnet.helius-rpc.com/?api-key=$KEY,public=https://api.mainnet-beta.solana.com"
-unset KEY
+export RPC_BENCH_ENDPOINTS="helius=https://mainnet.helius-rpc.com/?api-key=YOUR_KEY_HERE,public=https://api.mainnet-beta.solana.com"
 node latency-probe.mjs --samples 15
 ```
 
-`read -rs` does not echo, and the `export` line as typed contains `$KEY` rather than the key itself, so the shell history never holds the secret. The probe reads `AWS_REGION` and labels the run with the region automatically — CloudShell is a managed container with no instance metadata service, so the environment variable is the only reliable source there.
+Replace `YOUR_KEY_HERE` before running the second line. Do not reach for `read -rsp` to keep the key out of the shell history in a block like this: pasting several lines at once feeds the terminal's input buffer, so `read` consumes the *next pasted line* as its answer instead of waiting for you to type. The key does land in CloudShell's history this way, so rotate it when you are done if that matters.
+
+The probe reads `AWS_REGION` and labels the run with the region automatically — CloudShell is a managed container with no instance metadata service, so the environment variable is the only reliable source there.
 
 Repeat in two or three regions and compare the `3-round scan` column. Worth measuring: `eu-central-1` (Frankfurt, densest Solana stake alongside Amsterdam), `us-east-1` (northern Virginia), and `me-central-1` (UAE) if you are in South Asia and want to know whether a nearer-but-thinner location wins.
 
