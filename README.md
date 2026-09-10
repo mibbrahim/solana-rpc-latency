@@ -41,13 +41,13 @@ On a cloud machine, omit `--label` and it detects the AWS, GCP or Azure region i
 | Where | Region control | Cost |
 |---|---|---|
 | AWS CloudShell | any region you select | free, Node preinstalled, no VM to provision |
-| GitHub Actions (this repo) | Azure East US 2 only | free, no credit card |
+| GitHub Actions (this repo) | not selectable, varies per run | free, no credit card |
 | Oracle Cloud Always Free | Frankfurt provisions quickly | free indefinitely, 2 OCPU / 12 GB ARM |
 | Google Cloud trial | any region | $350 / 90 days |
 
 ## The workflow
 
-`.github/workflows/latency.yml` runs the probe on GitHub's hosted runners, which are all in **Azure East US 2** — northern Virginia, near a large share of Solana stake. It prints the runner's detected region, then the probe table.
+`.github/workflows/latency.yml` runs the probe on GitHub's hosted runners. Their region is **not selectable and varies between runs** — community docs commonly say East US 2, but the first run of this workflow landed in `northcentralus` (Chicago). The workflow therefore reads the region from the Azure instance metadata service at runtime and folds it into the probe's label, because a latency figure is meaningless without knowing where it was measured from.
 
 Add a repository secret `RPC_BENCH_ENDPOINTS` under Settings → Secrets and variables → Actions. Without it the workflow still runs and measures the public endpoint only. Trigger it by hand from the Actions tab, or let the six-hourly schedule collect a picture of how much the numbers drift.
 
