@@ -36,6 +36,26 @@ On a cloud machine, omit `--label` and it detects the AWS, GCP or Azure region i
 
 `rtt` and `slot lag` pull in opposite directions and both matter. A nearby but stale endpoint quotes prices that no longer exist, which is worse than a distant fresh one.
 
+## Measuring from AWS CloudShell
+
+CloudShell is the only free option whose region you actually choose, which makes it the way to answer "would Frankfurt be better than Chicago for my endpoint". It is free, has `git` and Node preinstalled, and needs no VM.
+
+Set the console region selector (top right) to the region you want to measure from, open CloudShell, then paste:
+
+```bash
+git clone --depth 1 https://github.com/mibbrahim/solana-rpc-latency.git ~/rpc && cd ~/rpc
+read -rsp "endpoint API key: " KEY && echo
+export RPC_BENCH_ENDPOINTS="helius=https://mainnet.helius-rpc.com/?api-key=$KEY,public=https://api.mainnet-beta.solana.com"
+unset KEY
+node latency-probe.mjs --samples 15
+```
+
+`read -rs` does not echo, and the `export` line as typed contains `$KEY` rather than the key itself, so the shell history never holds the secret. The probe reads `AWS_REGION` and labels the run with the region automatically — CloudShell is a managed container with no instance metadata service, so the environment variable is the only reliable source there.
+
+Repeat in two or three regions and compare the `3-round scan` column. Worth measuring: `eu-central-1` (Frankfurt, densest Solana stake alongside Amsterdam), `us-east-1` (northern Virginia), and `me-central-1` (UAE) if you are in South Asia and want to know whether a nearer-but-thinner location wins.
+
+Clone rather than `curl` the raw URL: `raw.githubusercontent.com` caches for about five minutes, so a fresh push is not immediately visible there.
+
 ## Free places to run it
 
 | Where | Region control | Cost |
