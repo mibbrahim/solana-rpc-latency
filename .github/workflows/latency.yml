@@ -1,0 +1,53 @@
+name: RPC latency from a datacenter
+
+# GitHub's hosted runners all sit in Azure East US 2 (northern Virginia), the same metro as a
+# large share of Solana stake and of most providers' US RPC nodes. That makes this a free,
+# no-credit-card way to see what the probe reports from a datacenter rather than a home
+# connection. Compare a run here against `node latency-probe.mjs` on your own machine.
+#
+# Setup: add a repository secret named RPC_BENCH_ENDPOINTS (Settings -> Secrets and variables
+# -> Actions -> New repository secret) whose value is a comma-separated list:
+#   helius=https://mainnet.helius-rpc.com/?api-key=KEY,public=https://api.mainnet-beta.solana.com
+# Secrets are never exposed to workflows triggered from forks, and the probe prints only
+# hostnames, so the key cannot appear in a run log.
+
+on:
+  # Run on push so the first datacenter measurement lands without anyone clicking anything.
+  push:
+    branches: [main]
+    paths: ['latency-probe.mjs', '.github/workflows/latency.yml']
+  workflow_dispatch:
+  schedule:
+    # Every six hours: enough to see how much the numbers drift across a day. Actions minutes
+    # are free and unlimited on a public repo; on a private one this costs ~360 of 2,000/month.
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Report which datacenter this runner is in
+        run: |
+          region=$(curl -s --max-time 3 -H Metadata:true \
+            "http://169.254.169.254/metadata/instance/compute/location?api-version=2021-02-01&format=text" \
+            || echo unknown)
+          echo "azure region: ${region:-unknown}"
+
+      - name: Probe
+        env:
+          RPC_BENCH_ENDPOINTS: ${{ secrets.RPC_BENCH_ENDPOINTS }}
+        run: |
+          if [ -z "$RPC_BENCH_ENDPOINTS" ]; then
+            echo "::warning::No RPC_BENCH_ENDPOINTS secret set; measuring the public endpoint only."
+          fi
+          node latency-probe.mjs --label "github-actions-azure-eastus2" --samples 15
