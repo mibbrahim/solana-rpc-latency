@@ -67,6 +67,16 @@ const ACCOUNT_TOTAL = ROUNDS.reduce((n, r) => n + r.length, 0);
 
 /** Best-effort cloud region detection, so a pasted result says where it was measured from. */
 async function whereAmI() {
+  // Managed shells and container runtimes expose the region as an environment variable and have
+  // no instance metadata service to ask, so check these first: AWS CloudShell sets AWS_REGION.
+  const fromEnv = [
+    ['aws', process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION],
+    ['gcp', process.env.GOOGLE_CLOUD_REGION ?? process.env.CLOUDSDK_COMPUTE_REGION],
+    ['fly', process.env.FLY_REGION],
+    ['azure', process.env.REGION_NAME],
+  ];
+  for (const [cloud, region] of fromEnv) if (region) return `${cloud}:${region}`;
+
   const probes = [
     ['aws', 'http://169.254.169.254/latest/meta-data/placement/region', {}],
     ['gcp', 'http://metadata.google.internal/computeMetadata/v1/instance/zone', { 'Metadata-Flavor': 'Google' }],
