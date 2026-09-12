@@ -77,7 +77,12 @@ async function whereAmI() {
   ];
   for (const [cloud, region] of fromEnv) if (region) return `${cloud}:${region}`;
 
+  // Several providers answer on 169.254.169.254, so a 200 alone does not identify the cloud:
+  // a Vultr box returns a response to the AWS path and used to be labelled "aws:" with an empty
+  // region. Require a plausible region token before believing any of these.
+  const plausible = value => /^[A-Za-z0-9][A-Za-z0-9_-]{1,31}$/.test(value);
   const probes = [
+    ['vultr', 'http://169.254.169.254/v1/region/regioncode', {}],
     ['aws', 'http://169.254.169.254/latest/meta-data/placement/region', {}],
     ['gcp', 'http://metadata.google.internal/computeMetadata/v1/instance/zone', { 'Metadata-Flavor': 'Google' }],
     ['azure', 'http://169.254.169.254/metadata/instance/compute/location?api-version=2021-02-01&format=text', { Metadata: 'true' }],
@@ -85,7 +90,9 @@ async function whereAmI() {
   for (const [cloud, url, headers] of probes) {
     try {
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(700) });
-      if (res.ok) return `${cloud}:${(await res.text()).trim().split('/').pop()}`;
+      if (!res.ok) continue;
+      const region = (await res.text()).trim().split('/').pop();
+      if (plausible(region)) return `${cloud}:${region}`;
     } catch { /* not this cloud, or no metadata service reachable */ }
   }
   return 'unknown-location';
